@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎓 Buku Tahunan & Direktori Kelas Digital</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- AWS SDK for JavaScript Browser Bundle -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aws-sdk/2.1585.0/aws-sdk.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        h1, h2, h3, h4, .font-heading { font-family: 'Outfit', sans-serif; }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+        }
+        .id-badge-pattern {
+            background-color: #f8fafc;
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+            background-size: 16px 16px;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-100 via-indigo-50/40 to-blue-50/50 text-slate-800 min-h-screen antialiased id-badge-pattern">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-xl shadow-indigo-500/25">
+                    <i class="fa-solid fa-graduation-cap text-2xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">Classmates Directory</h1>
+                        <span class="bg-indigo-100 text-indigo-700 font-bold text-[11px] px-2.5 py-0.5 rounded-full uppercase tracking-wider">Yearbook 2024</span>
+                    </div>
+                    <p class="text-xs text-slate-500 font-medium">Buku Induk Digital • Powered by AWS DynamoDB</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-3">
+                <button onclick="toggleConfigModal()" class="flex items-center gap-2 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm transition">
+                    <i class="fa-brands fa-aws text-amber-500 text-sm"></i>
+                    <span id="configNavText">AWS Settings</span>
+                </button>
+                <button onclick="openAddModal()" class="flex items-center gap-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl shadow-lg shadow-indigo-600/30 transition transform active:scale-95">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span>Tambah Teman</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- Connection Status Banner -->
+        <div id="connBanner" class="rounded-2xl p-4 border flex items-center justify-between bg-rose-50 border-rose-200 text-rose-800 transition-all">
+            <div class="flex items-center gap-3">
+                <div id="connDot" class="w-3 h-3 rounded-full bg-rose-500 animate-ping"></div>
+                <div>
+                    <h4 id="connTitle" class="text-sm font-bold text-slate-900">Belum Terhubung ke AWS DynamoDB</h4>
+                    <p id="connDesc" class="text-xs text-slate-600">Kredensial AWS belum disetel. Data teman kelas kosong sampai Anda memasukkan Access Key & Session Token.</p>
+                </div>
+            </div>
+            <button onclick="toggleConfigModal()" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-sm">
+                Hubungkan Sekarang →
+            </button>
+        </div>
+
+        <!-- Metric Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div class="glass-card p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+                <div>
+                    <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Siswa</span>
+                    <h3 id="statTotal" class="text-2xl font-black text-slate-900 leading-tight">0</h3>
+                </div>
+            </div>
+
+            <div class="glass-card p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-mars"></i>
+                </div>
+                <div>
+                    <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Laki-Laki</span>
+                    <h3 id="statMale" class="text-2xl font-black text-slate-900 leading-tight">0</h3>
+                </div>
+            </div>
+
+            <div class="glass-card p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-venus"></i>
+                </div>
+                <div>
+                    <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Perempuan</span>
+                    <h3 id="statFemale" class="text-2xl font-black text-slate-900 leading-tight">0</h3>
+                </div>
+            </div>
+
+            <div class="glass-card p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-award"></i>
+                </div>
+                <div>
+                    <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Pengurus</span>
+                    <h3 id="statOfficer" class="text-2xl font-black text-slate-900 leading-tight">0</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="glass-card p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+            
+            <!-- Search Field -->
+            <div class="relative w-full md:w-80">
+                <i class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <input type="text" id="searchInput" oninput="renderStudents()" placeholder="Cari nama, panggilan, NIM, hobi..." 
+                       class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+            </div>
+
+            <!-- Role & Gender Filter Badges -->
+            <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                <select id="filterRole" onchange="renderStudents()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Semua Jabatan</option>
+                    <option value="Ketua Kelas">Ketua Kelas</option>
+                    <option value="Wakil Ketua">Wakil Ketua</option>
+                    <option value="Sekretaris">Sekretaris</option>
+                    <option value="Bendahara">Bendahara</option>
+                    <option value="Anggota">Anggota</option>
+                </select>
+
+                <select id="filterGender" onchange="renderStudents()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Semua Gender</option>
+                    <option value="L">Laki-Laki</option>
+                    <option value="P">Perempuan</option>
+                </select>
+
+                <div class="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
+
+                <button onclick="refreshData()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition" title="Refresh DynamoDB">
+                    <i class="fa-solid fa-rotate" id="refreshSpin"></i>
+                    <span>Sync</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Student Cards Grid (Yearbook ID Style) -->
+        <div id="studentGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Cards rendered dynamically -->
+        </div>
+
+        <!-- Empty / Disconnected State -->
+        <div id="emptyContainer" class="glass-card rounded-3xl p-16 text-center border border-slate-200 space-y-4 max-w-lg mx-auto">
+            <div class="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-3xl mx-auto shadow-inner">
+                <i id="emptyIcon" class="fa-solid fa-cloud-arrow-down"></i>
+            </div>
+            <h3 id="emptyHeading" class="text-lg font-extrabold text-slate-800 font-heading">Belum Terhubung ke Database</h3>
+            <p id="emptySubtext" class="text-xs text-slate-500 leading-relaxed">
+                Tabel kosong karena belum terhubung ke AWS DynamoDB. Silakan masukkan kredensial AWS Anda untuk menampilkan data teman.
+            </p>
+            <button onclick="toggleConfigModal()" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-600/30 transition">
+                <i class="fa-brands fa-aws"></i> Konfigurasi DynamoDB
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Modal Form: Tambah / Edit Siswa (Drawer Style) -->
+    <div id="studentModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-7 shadow-2xl border border-slate-100 space-y-5 animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto">
+            
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-id-card"></i>
+                    </div>
+                    <div>
+                        <h3 id="modalFormTitle" class="text-lg font-bold text-slate-900 font-heading">Tambah Data Teman</h3>
+                        <p class="text-xs text-slate-400">Data akan tersimpan langsung ke AWS DynamoDB</p>
+                    </div>
+                </div>
+                <button onclick="closeAddModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <form id="studentForm" onsubmit="handleFormSubmit(event)" class="space-y-4 text-xs">
+                <input type="hidden" id="studentId">
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">NIM / NIS <span class="text-rose-500">*</span></label>
+                        <input type="text" id="nim" required placeholder="Misal: 20240101" 
+                               class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Nama Panggilan</label>
+                        <input type="text" id="nickname" placeholder="Misal: Budi" 
+                               class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Nama Lengkap <span class="text-rose-500">*</span></label>
+                    <input type="text" id="name" required placeholder="Misal: Budi Santoso Putra" 
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Jenis Kelamin</label>
+                        <select id="gender" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <option value="L">Laki-Laki</option>
+                            <option value="P">Perempuan</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Jabatan di Kelas</label>
+                        <select id="role" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <option value="Anggota">Anggota</option>
+                            <option value="Ketua Kelas">Ketua Kelas</option>
+                            <option value="Wakil Ketua">Wakil Ketua</option>
+                            <option value="Sekretaris">Sekretaris</option>
+                            <option value="Bendahara">Bendahara</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">No. WhatsApp</label>
+                        <div class="relative">
+                            <i class="fa-brands fa-whatsapp absolute left-3 top-1/2 -translate-y-1/2 text-emerald-500"></i>
+                            <input type="text" id="phone" placeholder="081234..." 
+                                   class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-2.5 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Instagram (@username)</label>
+                        <div class="relative">
+                            <i class="fa-brands fa-instagram absolute left-3 top-1/2 -translate-y-1/2 text-pink-500"></i>
+                            <input type="text" id="instagram" placeholder="budi_s" 
+                                   class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-2.5 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Hobi / Kutipan / Keahlian</label>
+                    <textarea id="hobby" rows="2" placeholder="Contoh: Bermain Gitar, Web Development • 'Keep moving forward!'" 
+                              class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+                </div>
+
+                <div class="flex gap-2 pt-3">
+                    <button type="button" onclick="closeAddModal()" class="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl transition">
+                        Batal
+                    </button>
+                    <button type="submit" id="saveSubmitBtn" class="w-2/3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span id="saveBtnText">Simpan ke DynamoDB</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Konfigurasi AWS -->
+    <div id="configModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-7 shadow-2xl border border-slate-100 space-y-4 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+            
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center text-lg">
+                        <i class="fa-brands fa-aws"></i>
+                    </div>
+                    <h3 class="text-base font-extrabold text-slate-900 font-heading">AWS DynamoDB Config</h3>
+                </div>
+                <button onclick="toggleConfigModal()" class="w-7 h-7 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-500 leading-relaxed">
+                Tabel menggunakan primary key <strong><code>id</code> (String)</strong>. Kredensial disimpan aman di session browser Anda.
+            </p>
+
+            <form onsubmit="saveAwsConfig(event)" class="space-y-3 text-xs">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">AWS Region <span class="text-rose-500">*</span></label>
+                        <input type="text" id="cfgRegion" placeholder="us-east-1" required 
+                               class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Table Name <span class="text-rose-500">*</span></label>
+                        <input type="text" id="cfgTableName" placeholder="TemanKelas" required 
+                               class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">AWS Access Key ID <span class="text-rose-500">*</span></label>
+                    <input type="text" id="cfgAccessKey" placeholder="AKIA... atau ASIA..." required 
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">AWS Secret Access Key <span class="text-rose-500">*</span></label>
+                    <input type="password" id="cfgSecretKey" placeholder="Secret Key..." required 
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block font-bold text-slate-700">AWS Session Token</label>
+                        <span class="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded font-medium">Wajib jika AWS Academy</span>
+                    </div>
+                    <textarea id="cfgSessionToken" rows="3" placeholder="IQoJb3JpZ2luX2VjE..." 
+                              class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none font-mono"></textarea>
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="disconnectAws()" class="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition">
+                        Disconnect
+                    </button>
+                    <button type="submit" class="w-2/3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-indigo-600/30 transition">
+                        Connect Database
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 max-w-sm bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 transform translate-y-24 opacity-0 transition-all duration-300 z-50">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+        <div id="toastMsg" class="text-xs font-semibold">Notifikasi sistem</div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        let ddbDocClient = null;
+        let students = [];
+        let isDynamoConnected = false;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initDynamoDB();
+        });
+
+        function initDynamoDB() {
+            const config = getSavedConfig();
+            if (config && config.accessKey && config.secretKey && config.region && config.tableName) {
+                try {
+                    const awsCreds = {
+                        region: config.region,
+                        accessKeyId: config.accessKey,
+                        secretAccessKey: config.secretKey
+                    };
+
+                    if (config.sessionToken && config.sessionToken.trim() !== '') {
+                        awsCreds.sessionToken = config.sessionToken.trim();
+                    }
+
+                    AWS.config.update(awsCreds);
+                    ddbDocClient = new AWS.DynamoDB.DocumentClient();
+                    isDynamoConnected = true;
+
+                    updateStatusUI(true, `Connected to DynamoDB (${config.tableName})`, `Region: ${config.region}`);
+                    loadStudents();
+                    return;
+                } catch (e) {
+                    console.error("AWS Error:", e);
+                    showToast("Inisialisasi AWS gagal: " + e.message, "error");
+                }
+            }
+
+            isDynamoConnected = false;
+            ddbDocClient = null;
+            students = [];
+            updateStatusUI(false, "Belum Terhubung ke AWS DynamoDB", "Kredensial AWS belum disetel. Data dikosongkan.");
+            renderStudents();
+        }
+
+        function getSavedConfig() {
+            return JSON.parse(localStorage.getItem('aws_yearbook_config') || 'null');
+        }
+
+        function updateStatusUI(connected, title, desc) {
+            const banner = document.getElementById('connBanner');
+            const dot = document.getElementById('connDot');
+            const connTitle = document.getElementById('connTitle');
+            const connDesc = document.getElementById('connDesc');
+            const configNavText = document.getElementById('configNavText');
+
+            if (connected) {
+                banner.className = "rounded-2xl p-4 border flex items-center justify-between bg-emerald-50 border-emerald-200 text-emerald-800 transition-all";
+                dot.className = "w-3 h-3 rounded-full bg-emerald-500";
+                connTitle.innerText = "🟢 " + title;
+                connDesc.innerText = desc;
+                configNavText.innerText = "AWS Connected";
+            } else {
+                banner.className = "rounded-2xl p-4 border flex items-center justify-between bg-rose-50 border-rose-200 text-rose-800 transition-all";
+                dot.className = "w-3 h-3 rounded-full bg-rose-500 animate-ping";
+                connTitle.innerText = "🔴 " + title;
+                connDesc.innerText = desc;
+                configNavText.innerText = "AWS Settings";
+            }
+        }
+
+        function loadStudents() {
+            if (!isDynamoConnected || !ddbDocClient) {
+                students = [];
+                renderStudents();
+                return;
+            }
+
+            const spin = document.getElementById('refreshSpin');
+            spin.classList.add('animate-spin');
+
+            const config = getSavedConfig();
+            const params = { TableName: config.tableName };
+
+            ddbDocClient.scan(params, (err, data) => {
+                spin.classList.remove('animate-spin');
+                if (err) {
+                    showToast("DynamoDB Scan Error: " + err.message, "error");
+                    students = [];
+                } else {
+                    students = data.Items || [];
+                }
+                renderStudents();
+            });
+        }
+
+        function renderStudents() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const filterRole = document.getElementById('filterRole').value;
+            const filterGender = document.getElementById('filterGender').value;
+
+            const filtered = students.filter(s => {
+                const matchSearch = (s.name || '').toLowerCase().includes(search) || 
+                                    (s.nim || '').toLowerCase().includes(search) ||
+                                    (s.nickname || '').toLowerCase().includes(search) ||
+                                    (s.hobby || '').toLowerCase().includes(search);
+                const matchRole = filterRole === '' || s.role === filterRole;
+                const matchGender = filterGender === '' || s.gender === filterGender;
+                return matchSearch && matchRole && matchGender;
+            });
+
+            // Update Statistics
+            document.getElementById('statTotal').innerText = students.length;
+            document.getElementById('statMale').innerText = students.filter(s => s.gender === 'L').length;
+            document.getElementById('statFemale').innerText = students.filter(s => s.gender === 'P').length;
+            document.getElementById('statOfficer').innerText = students.filter(s => s.role && s.role !== 'Anggota').length;
+
+            const grid = document.getElementById('studentGrid');
+            const emptyContainer = document.getElementById('emptyContainer');
+            const emptyHeading = document.getElementById('emptyHeading');
+            const emptySubtext = document.getElementById('emptySubtext');
+            const emptyIcon = document.getElementById('emptyIcon');
+
+            grid.innerHTML = '';
+
+            if (filtered.length === 0) {
+                emptyContainer.classList.remove('hidden');
+                if (!isDynamoConnected) {
+                    emptyIcon.className = "fa-solid fa-cloud-slash text-rose-500";
+                    emptyHeading.innerText = "Belum Terhubung ke AWS DynamoDB";
+                    emptySubtext.innerText = "Silakan masukkan Kredensial AWS (Access Key, Secret Key, Session Token) untuk melihat dan menambahkan data teman.";
+                } else {
+                    emptyIcon.className = "fa-solid fa-users-slash text-slate-400";
+                    emptyHeading.innerText = "Belum Ada Teman Terdaftar";
+                    emptySubtext.innerText = "Tabel DynamoDB masih kosong. Klik tombol 'Tambah Teman' di atas untuk mulai mendata teman sekelas.";
+                }
+                return;
+            } else {
+                emptyContainer.classList.add('hidden');
+            }
+
+            // Render Cards in Yearbook / ID Badge Style
+            filtered.forEach(s => {
+                const card = document.createElement('div');
+                card.className = "glass-card rounded-3xl p-6 border border-slate-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between relative overflow-hidden group";
+
+                // Background gradient top accent
+                const headerColor = s.gender === 'P' ? 'from-rose-500 to-pink-500' : 'from-blue-600 to-indigo-600';
+                const roleBadge = s.role === 'Ketua Kelas' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                                  s.role === 'Wakil Ketua' ? 'bg-indigo-100 text-indigo-800 border-indigo-300' :
+                                  s.role === 'Sekretaris'  ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                                  s.role === 'Bendahara'   ? 'bg-purple-100 text-purple-800 border-purple-300' :
+                                  'bg-slate-100 text-slate-700 border-slate-200';
+
+                let cleanPhone = (s.phone || '').replace(/[^0-9]/g, '');
+                if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
+
+                card.innerHTML = `
+                    <div class="h-2 w-full bg-gradient-to-r ${headerColor} absolute top-0 left-0"></div>
+
+                    <div class="space-y-4 pt-1">
+                        <!-- Top Header: Avatar + Identity -->
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-center gap-3.5">
+                                <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr ${headerColor} flex items-center justify-center text-white font-extrabold text-lg shadow-md tracking-wider">
+                                    ${escapeHtml((s.nickname || s.name || '?').substring(0, 2).toUpperCase())}
+                                </div>
+                                <div>
+                                    <h4 class="font-extrabold text-slate-900 text-base font-heading leading-tight">${escapeHtml(s.name)}</h4>
+                                    <p class="text-xs text-slate-500 mt-0.5">NIM: <span class="font-mono font-semibold text-slate-700">${escapeHtml(s.nim || '-')}</span> ${s.nickname ? `• "${escapeHtml(s.nickname)}"` : ''}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Role & Gender Tag -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] font-bold px-3 py-1 rounded-full border ${roleBadge}">
+                                ${escapeHtml(s.role || 'Anggota')}
+                            </span>
+                            <span class="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+                                ${s.gender === 'L' ? '👦 Laki-Laki' : '👧 Perempuan'}
+                            </span>
+                        </div>
+
+                        <!-- Hobby / Bio Quote -->
+                        <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 text-xs text-slate-600 leading-relaxed italic">
+                            "${escapeHtml(s.hobby || 'Tidak ada catatan hobi atau kutipan.')}"
+                        </div>
+                    </div>
+
+                    <!-- Bottom Quick Links & Actions -->
+                    <div class="flex items-center justify-between pt-4 mt-4 border-t border-slate-100">
+                        <div class="flex items-center gap-2">
+                            ${cleanPhone ? `
+                                <a href="https://wa.me/${cleanPhone}" target="_blank" class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white flex items-center justify-center text-sm transition" title="Chat WhatsApp">
+                                    <i class="fa-brands fa-whatsapp"></i>
+                                </a>
+                            ` : ''}
+                            ${s.instagram ? `
+                                <a href="https://instagram.com/${escapeHtml(s.instagram)}" target="_blank" class="w-8 h-8 rounded-xl bg-pink-50 text-pink-600 hover:bg-pink-600 hover:text-white flex items-center justify-center text-sm transition" title="Lihat Instagram">
+                                    <i class="fa-brands fa-instagram"></i>
+                                </a>
+                            ` : ''}
+                        </div>
+
+                        <div class="flex items-center gap-1">
+                            <button onclick="editStudent('${s.id}')" class="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white text-xs font-bold transition flex items-center gap-1">
+                                <i class="fa-solid fa-pen-to-square text-[10px]"></i> Edit
+                            </button>
+                            <button onclick="deleteStudent('${s.id}')" class="w-8 h-8 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white flex items-center justify-center text-xs transition" title="Hapus">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Modal Form Handlers
+        function openAddModal() {
+            document.getElementById('studentForm').reset();
+            document.getElementById('studentId').value = '';
+            document.getElementById('gender').value = 'L';
+            document.getElementById('role').value = 'Anggota';
+            document.getElementById('modalFormTitle').innerText = 'Tambah Data Teman';
+            document.getElementById('saveBtnText').innerText = 'Simpan ke DynamoDB';
+            document.getElementById('studentModal').classList.remove('hidden');
+        }
+
+        function closeAddModal() {
+            document.getElementById('studentModal').classList.add('hidden');
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            if (!isDynamoConnected || !ddbDocClient) {
+                showToast("Harap koneksikan ke AWS DynamoDB terlebih dahulu!", "error");
+                toggleConfigModal();
+                return;
+            }
+
+            const config = getSavedConfig();
+            const id = document.getElementById('studentId').value || 'std_' + Date.now();
+            const item = {
+                id: id,
+                nim: document.getElementById('nim').value.trim(),
+                name: document.getElementById('name').value.trim(),
+                nickname: document.getElementById('nickname').value.trim(),
+                gender: document.getElementById('gender').value,
+                role: document.getElementById('role').value,
+                phone: document.getElementById('phone').value.trim(),
+                instagram: document.getElementById('instagram').value.trim().replace('@', ''),
+                hobby: document.getElementById('hobby').value.trim(),
+                updated_at: new Date().toISOString()
+            };
+
+            const params = {
+                TableName: config.tableName,
+                Item: item
+            };
+
+            ddbDocClient.put(params, (err) => {
+                if (err) {
+                    showToast("Gagal menyimpan ke DynamoDB: " + err.message, "error");
+                } else {
+                    showToast("Data teman berhasil disimpan ke DynamoDB!", "success");
+                    closeAddModal();
+                    loadStudents();
+                }
+            });
+        }
+
+        function editStudent(id) {
+            const s = students.find(item => item.id === id);
+            if (!s) return;
+
+            document.getElementById('studentId').value = s.id;
+            document.getElementById('nim').value = s.nim || '';
+            document.getElementById('name').value = s.name || '';
+            document.getElementById('nickname').value = s.nickname || '';
+            document.getElementById('gender').value = s.gender || 'L';
+            document.getElementById('role').value = s.role || 'Anggota';
+            document.getElementById('phone').value = s.phone || '';
+            document.getElementById('instagram').value = s.instagram || '';
+            document.getElementById('hobby').value = s.hobby || '';
+
+            document.getElementById('modalFormTitle').innerText = 'Edit Data Teman';
+            document.getElementById('saveBtnText').innerText = 'Perbarui di DynamoDB';
+            document.getElementById('studentModal').classList.remove('hidden');
+        }
+
+        function deleteStudent(id) {
+            if (!isDynamoConnected || !ddbDocClient) {
+                showToast("Harap koneksikan ke DynamoDB!", "error");
+                return;
+            }
+            if (!confirm("Yakin ingin menghapus data teman ini dari DynamoDB?")) return;
+
+            const config = getSavedConfig();
+            const params = {
+                TableName: config.tableName,
+                Key: { id: id }
+            };
+
+            ddbDocClient.delete(params, (err) => {
+                if (err) {
+                    showToast("Gagal menghapus: " + err.message, "error");
+                } else {
+                    showToast("Data teman berhasil dihapus!", "success");
+                    loadStudents();
+                }
+            });
+        }
+
+        // Config Modal Handlers
+        function toggleConfigModal() {
+            const modal = document.getElementById('configModal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) {
+                const cfg = getSavedConfig();
+                if (cfg) {
+                    document.getElementById('cfgRegion').value = cfg.region || '';
+                    document.getElementById('cfgTableName').value = cfg.tableName || '';
+                    document.getElementById('cfgAccessKey').value = cfg.accessKey || '';
+                    document.getElementById('cfgSecretKey').value = cfg.secretKey || '';
+                    document.getElementById('cfgSessionToken').value = cfg.sessionToken || '';
+                }
+            }
+        }
+
+        function saveAwsConfig(e) {
+            e.preventDefault();
+            const config = {
+                region: document.getElementById('cfgRegion').value.trim(),
+                tableName: document.getElementById('cfgTableName').value.trim(),
+                accessKey: document.getElementById('cfgAccessKey').value.trim(),
+                secretKey: document.getElementById('cfgSecretKey').value.trim(),
+                sessionToken: document.getElementById('cfgSessionToken').value.trim()
+            };
+
+            localStorage.setItem('aws_yearbook_config', JSON.stringify(config));
+            toggleConfigModal();
+            initDynamoDB();
+            showToast("Kredensial AWS tersimpan! Menghubungkan...", "success");
+        }
+
+        function disconnectAws() {
+            localStorage.removeItem('aws_yearbook_config');
+            toggleConfigModal();
+            initDynamoDB();
+            showToast("Kredensial AWS dihapus. Data dikosongkan.", "success");
+        }
+
+        function refreshData() {
+            if (!isDynamoConnected) {
+                showToast("Belum terhubung ke DynamoDB", "error");
+                return;
+            }
+            loadStudents();
+            showToast("Sinkronisasi data dari DynamoDB...", "success");
+        }
+
+        function showToast(msg, type = "success") {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastMsg.innerText = msg;
+            if (type === "error") {
+                toastIcon.className = "fa-solid fa-circle-exclamation text-rose-400 text-base";
+            } else {
+                toastIcon.className = "fa-solid fa-circle-check text-emerald-400 text-base";
+            }
+
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 3500);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+    </script>
+</body>
+</html>
