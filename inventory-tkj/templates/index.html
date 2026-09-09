@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ SIMBAR TKJ - Sistem Inventaris Laboratorium Komputer & Jaringan</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <!-- App Header / Navbar -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand-wrapper">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-server"></i>
+                    <span class="pulse-indicator"></span>
+                </div>
+                <div>
+                    <div class="brand-title-wrap">
+                        <h1 class="brand-title">SIMBAR TKJ</h1>
+                        <span class="brand-badge">Lab Inventory v2.0</span>
+                    </div>
+                    <p class="brand-subtitle">AWS EC2 IAM Role • DynamoDB & S3 Private Storage</p>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <div class="iam-badge" id="iamBadge">
+                    <i class="fa-solid fa-shield-halved text-emerald"></i>
+                    <span>EC2 IAM Role: <strong id="iamStatusText">Aktif</strong></span>
+                </div>
+                <button onclick="fetchInventoryData()" class="btn btn-primary btn-sm" id="btnRefresh" title="Segarkan Data">
+                    <i class="fa-solid fa-arrows-rotate" id="refreshIcon"></i>
+                    <span class="hide-mobile">Refresh</span>
+                </button>
+                <button onclick="openAddModal()" class="btn btn-cyan btn-sm">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Tambah Barang</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-container">
+
+        <!-- Cloud Info Banner -->
+        <div class="conn-banner conn-banner-connected">
+            <div class="conn-banner-left">
+                <div class="banner-dot"></div>
+                <div>
+                    <h4 class="banner-title" id="bannerTitle">Terhubung ke AWS via EC2 IAM Role</h4>
+                    <p class="banner-desc" id="bannerDesc">Data tersimpan di DynamoDB dan foto diupload ke AWS S3 Private melalui Boto3 tanpa perlu Access Key.</p>
+                </div>
+            </div>
+            <div class="conn-banner-right">
+                <span class="badge-s3-private"><i class="fa-solid fa-lock"></i> S3 Block Public Access ON</span>
+            </div>
+        </div>
+
+        <!-- Dashboard Stats Cards -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon-wrapper bg-blue-subtle text-blue">
+                    <i class="fa-solid fa-cubes-stacked"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Jenis Barang</span>
+                    <h3 class="stat-value" id="statTotalTypes">0</h3>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon-wrapper bg-cyan-subtle text-cyan">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Stok Unit</span>
+                    <h3 class="stat-value" id="statTotalUnits">0</h3>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon-wrapper bg-emerald-subtle text-emerald">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Kondisi Baik / Siap</span>
+                    <h3 class="stat-value text-emerald" id="statGoodUnits">0</h3>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon-wrapper bg-rose-subtle text-rose">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Rusak / Perbaikan</span>
+                    <h3 class="stat-value text-rose" id="statDamagedUnits">0</h3>
+                </div>
+            </div>
+        </section>
+
+        <!-- Search, Filter & Toolbar -->
+        <section class="toolbar-section">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="searchInput" placeholder="Cari nama barang, kode aset, merk, rak..." oninput="handleSearchFilter()">
+                <button id="clearSearchBtn" class="clear-search-btn" onclick="clearSearch()" style="display: none;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="filter-controls">
+                <div class="select-wrapper">
+                    <select id="filterCategory" onchange="handleSearchFilter()">
+                        <option value="ALL">Semua Kategori</option>
+                        <option value="Router">🌐 Router & Gateway</option>
+                        <option value="Switch">🔀 Switch & Hub</option>
+                        <option value="Server">🖥️ Server & PC Lab</option>
+                        <option value="AccessPoint">📡 Access Point & WiFi</option>
+                        <option value="Tool">🛠️ Alat & Tester Jaringan</option>
+                        <option value="Kabel">🔌 Kabel & Konektor</option>
+                        <option value="Sparepart">⚙️ Komponen & Sparepart</option>
+                        <option value="Lainnya">📦 Lainnya</option>
+                    </select>
+                </div>
+
+                <div class="select-wrapper">
+                    <select id="filterCondition" onchange="handleSearchFilter()">
+                        <option value="ALL">Semua Kondisi</option>
+                        <option value="Baik">🟢 Baik (Siap Pakai)</option>
+                        <option value="Rusak Ringan">🟡 Rusak Ringan</option>
+                        <option value="Rusak Berat">🔴 Rusak Berat</option>
+                        <option value="Dalam Perbaikan">🔧 Dalam Perbaikan</option>
+                        <option value="Dipinjam">📋 Sedang Dipinjam</option>
+                    </select>
+                </div>
+
+                <div class="view-toggle">
+                    <button class="view-btn active" id="btnViewGrid" onclick="setViewMode('grid')" title="Tampilan Card Grid">
+                        <i class="fa-solid fa-grip"></i>
+                    </button>
+                    <button class="view-btn" id="btnViewTable" onclick="setViewMode('table')" title="Tampilan Tabel">
+                        <i class="fa-solid fa-table-list"></i>
+                    </button>
+                </div>
+
+                <div class="extra-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="exportToCSV()" title="Export ke file CSV / Excel">
+                        <i class="fa-solid fa-file-csv text-emerald"></i>
+                        <span class="hide-mobile">Export CSV</span>
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="window.print()" title="Cetak Rekap">
+                        <i class="fa-solid fa-print"></i>
+                        <span class="hide-mobile">Cetak</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Category Quick Chips -->
+        <div class="category-chips" id="categoryChips">
+            <button class="chip active" onclick="setChipCategory('ALL', this)">Semua (<span id="countAll">0</span>)</button>
+            <button class="chip" onclick="setChipCategory('Router', this)"><i class="fa-solid fa-network-wired"></i> Router</button>
+            <button class="chip" onclick="setChipCategory('Switch', this)"><i class="fa-solid fa-arrows-split-up-and-left"></i> Switch</button>
+            <button class="chip" onclick="setChipCategory('Server', this)"><i class="fa-solid fa-server"></i> Server/PC</button>
+            <button class="chip" onclick="setChipCategory('AccessPoint', this)"><i class="fa-solid fa-wifi"></i> Access Point</button>
+            <button class="chip" onclick="setChipCategory('Tool', this)"><i class="fa-solid fa-screwdriver-wrench"></i> Tools</button>
+            <button class="chip" onclick="setChipCategory('Kabel', this)"><i class="fa-solid fa-ethernet"></i> Kabel</button>
+            <button class="chip" onclick="setChipCategory('Sparepart', this)"><i class="fa-solid fa-microchip"></i> Sparepart</button>
+        </div>
+
+        <!-- Inventory List Display Area -->
+        <section id="inventoryContainer">
+            <!-- Loading State -->
+            <div id="loadingState" class="state-placeholder" style="display: none;">
+                <div class="spinner"></div>
+                <h3>Memuat Data dari DynamoDB...</h3>
+                <p>Mengambil data inventaris melalui backend Boto3 EC2</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="state-placeholder" style="display: none;">
+                <div class="placeholder-icon">
+                    <i class="fa-solid fa-boxes-packing"></i>
+                </div>
+                <h3 id="emptyTitle">Belum Ada Data Inventaris</h3>
+                <p id="emptyDesc">Klik tombol "Tambah Barang" untuk mulai mencatat perangkat lab TKJ ke DynamoDB.</p>
+                <button onclick="openAddModal()" class="btn btn-cyan btn-sm mt-3">
+                    <i class="fa-solid fa-plus"></i> Tambah Barang Pertama
+                </button>
+            </div>
+
+            <!-- Grid Cards View Container -->
+            <div id="gridContainer" class="inventory-grid"></div>
+
+            <!-- Table View Container -->
+            <div id="tableContainer" class="table-responsive" style="display: none;">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 70px;">Foto</th>
+                            <th>Kode Aset</th>
+                            <th>Nama Barang & Merk</th>
+                            <th>Kategori</th>
+                            <th>Lokasi Rak/Lab</th>
+                            <th>Jumlah</th>
+                            <th>Kondisi</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal: Form Tambah / Edit Barang -->
+    <div id="itemModal" class="modal-backdrop">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div class="flex items-center gap-2">
+                    <div class="modal-icon-badge" id="modalHeaderIcon">
+                        <i class="fa-solid fa-box-archive"></i>
+                    </div>
+                    <div>
+                        <h3 class="modal-title" id="itemModalTitle">Tambah Barang Inventaris</h3>
+                        <p class="modal-subtitle">Tersimpan di DynamoDB & foto di AWS S3 Private</p>
+                    </div>
+                </div>
+                <button type="button" class="modal-close" onclick="closeItemModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="itemForm" onsubmit="handleItemFormSubmit(event)">
+                <input type="hidden" id="itemId">
+                <input type="hidden" id="existingS3Key">
+
+                <div class="modal-body space-y-4">
+                    
+                    <!-- Row 1: Foto Upload S3 -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <span>Foto Perangkat / Barang</span>
+                            <span class="label-hint">Disimpan ke S3 Private via Boto3</span>
+                        </label>
+                        <div class="photo-upload-container">
+                            <div class="photo-preview-box" id="photoPreviewBox" onclick="document.getElementById('photoInput').click()">
+                                <img id="imagePreview" src="" alt="Preview" style="display: none;">
+                                <div id="uploadPlaceholder" class="upload-placeholder">
+                                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                                    <span>Pilih / Drop Foto Barang</span>
+                                    <small>JPG, PNG, WebP (Maks 10MB)</small>
+                                </div>
+                            </div>
+                            <input type="file" id="photoInput" name="foto" accept="image/*" style="display: none;" onchange="handlePhotoSelect(event)">
+                            <div class="photo-actions">
+                                <button type="button" class="btn btn-secondary btn-xs" onclick="document.getElementById('photoInput').click()">
+                                    <i class="fa-solid fa-camera"></i> Pilih Foto
+                                </button>
+                                <button type="button" class="btn btn-danger-subtle btn-xs" id="btnRemovePhoto" onclick="removePhotoPreview()" style="display: none;">
+                                    <i class="fa-solid fa-trash"></i> Hapus
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 2: Nama Barang & Kategori -->
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label class="form-label">Nama Perangkat / Barang <span class="text-rose">*</span></label>
+                            <input type="text" id="itemName" name="nama_barang" required placeholder="Contoh: Router Mikrotik RB750Gr3" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Kategori <span class="text-rose">*</span></label>
+                            <select id="itemCategory" name="kategori" required class="form-control">
+                                <option value="Router">🌐 Router & Gateway</option>
+                                <option value="Switch">🔀 Switch & Hub</option>
+                                <option value="Server">🖥️ Server & PC Lab</option>
+                                <option value="AccessPoint">📡 Access Point & WiFi</option>
+                                <option value="Tool">🛠️ Alat & Tester Jaringan</option>
+                                <option value="Kabel">🔌 Kabel & Konektor</option>
+                                <option value="Sparepart">⚙️ Komponen & Sparepart</option>
+                                <option value="Lainnya">📦 Lainnya</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Row 3: Kode Aset & Lokasi Rak -->
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span>Kode Aset / Serial Number</span>
+                                <button type="button" class="btn-link-xs" onclick="generateAssetCode()">Auto-Gen</button>
+                            </label>
+                            <input type="text" id="itemCode" name="kode_barang" placeholder="Contoh: TKJ-RTR-001" class="form-control font-mono">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Lokasi Rak / Lab <span class="text-rose">*</span></label>
+                            <input type="text" id="itemLocation" name="lokasi" required placeholder="Contoh: Lab TKJ 1 - Rak A2" class="form-control">
+                        </div>
+                    </div>
+
+                    <!-- Row 4: Jumlah Unit & Kondisi -->
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label class="form-label">Jumlah Unit (Stok) <span class="text-rose">*</span></label>
+                            <input type="number" id="itemQuantity" name="jumlah" min="1" max="9999" value="1" required class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Status Kondisi <span class="text-rose">*</span></label>
+                            <select id="itemCondition" name="kondisi" required class="form-control">
+                                <option value="Baik">🟢 Baik (Normal / Siap Pakai)</option>
+                                <option value="Rusak Ringan">🟡 Rusak Ringan (Bisa Digunakan)</option>
+                                <option value="Rusak Berat">🔴 Rusak Berat (Mati Total)</option>
+                                <option value="Dalam Perbaikan">🔧 Dalam Perbaikan (Servis)</option>
+                                <option value="Dipinjam">📋 Sedang Dipinjam</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Row 5: Spesifikasi Teknis -->
+                    <div class="form-group">
+                        <label class="form-label">Spesifikasi Teknis / Port / Merk</label>
+                        <input type="text" id="itemSpecs" name="spesifikasi" placeholder="Contoh: 5x Gigabit LAN, 1x USB, 256MB RAM, RouterOS L4" class="form-control">
+                    </div>
+
+                    <!-- Row 6: Catatan / Keterangan Tambahan -->
+                    <div class="form-group">
+                        <label class="form-label">Keterangan / Riwayat Perangkat</label>
+                        <textarea id="itemNotes" name="keterangan" rows="2" placeholder="Contoh: Hibah dari DUDI tahun 2024, adaptor bawaan tersedia di box rak..." class="form-control"></textarea>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeItemModal()">Batal</button>
+                    <button type="submit" class="btn btn-cyan" id="btnSubmitItem">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span id="btnSubmitItemText">Simpan Data</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Detail Barang -->
+    <div id="detailModal" class="modal-backdrop">
+        <div class="modal-dialog modal-dialog-lg">
+            <div class="modal-header">
+                <div class="flex items-center gap-2">
+                    <div class="modal-icon-badge bg-blue-subtle text-blue">
+                        <i class="fa-solid fa-circle-info"></i>
+                    </div>
+                    <div>
+                        <h3 class="modal-title" id="detailItemTitle">Detail Inventaris</h3>
+                        <p class="modal-subtitle" id="detailItemCode">Kode Aset: -</p>
+                    </div>
+                </div>
+                <button type="button" class="modal-close" onclick="closeDetailModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div class="detail-grid">
+                    <div class="detail-photo-side">
+                        <div class="detail-img-wrapper" id="detailImgWrapper">
+                            <img id="detailImg" src="" alt="Foto Barang">
+                        </div>
+                    </div>
+
+                    <div class="detail-info-side">
+                        <div class="detail-row">
+                            <span class="detail-label">Kategori</span>
+                            <span class="detail-value" id="detailCategory">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Status Kondisi</span>
+                            <span class="detail-value" id="detailCondition">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Jumlah Fisik</span>
+                            <span class="detail-value font-bold text-cyan" id="detailQuantity">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Lokasi Rak / Lab</span>
+                            <span class="detail-value" id="detailLocation">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Spesifikasi</span>
+                            <span class="detail-value" id="detailSpecs">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Keterangan</span>
+                            <span class="detail-value text-muted" id="detailNotes">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">ID Barang</span>
+                            <span class="detail-value font-mono text-xs" id="detailId">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDetailModal()">Tutup</button>
+                <button type="button" class="btn btn-primary" id="btnEditFromDetail">
+                    <i class="fa-solid fa-pen-to-square"></i> Edit Data
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Custom JS -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
