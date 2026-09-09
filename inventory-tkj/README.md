@@ -101,8 +101,8 @@ git clone https://github.com/ArRosid/praktek-aws-tkj.git
 # Masuk ke direktori project
 cd praktek-aws-tkj/inventory-tkj
 
-# Install library python yang dibutuhkan
-pip3 install -r requirements.txt
+# Install library python (gunakan --break-system-packages di Ubuntu 24.04)
+pip3 install -r requirements.txt --break-system-packages
 ```
 
 ### 4. Konfigurasi Environment File (`.env`)
@@ -158,49 +158,3 @@ http://<IP-PUBLIC-EC2>:5000
 *(Ganti `<IP-PUBLIC-EC2>` dengan IP Publik EC2 Anda)*.
 
 ---
-
-## 🔄 Langkah 6: Menjalankan Background Service (Agar Web Tidak Mati)
-
-Agar aplikasi tetap berjalan meskipun jendela terminal SSH ditutup, buat service **systemd**:
-
-1. Buat file service:
-   ```bash
-   sudo nano /etc/systemd/system/inventory.service
-   ```
-
-2. Tempel konfigurasi berikut (sesuaikan path jika berbeda):
-   ```ini
-   [Unit]
-   Description=SIMBAR TKJ Inventory Management Web App
-   After=network.target
-
-   [Service]
-   User=ubuntu
-   WorkingDirectory=/home/ubuntu/praktek-aws-tkj/inventory-tkj
-   ExecStart=/usr/bin/python3 app.py
-   Restart=always
-
-   [Install]
-   WantedBy=multi-user.target
-   ```
-
-3. Simpan (`Ctrl + O`, `Enter`, `Ctrl + X`), lalu aktifkan service:
-   ```bash
-   sudo systemctl daemon-reload
-   sudo systemctl enable --now inventory
-   ```
-
-4. Cek status service:
-   ```bash
-   sudo systemctl status inventory
-   ```
-
----
-
-## ⚡ Fitur Utama Aplikasi
-
-- **Kategori Khusus Lab TKJ**: Router, Switch/Hub, Server/PC Lab, Access Point, Alat & Tester (Crimping, Splicer), Kabel & Konektor, Sparepart.
-- **Auto-Generate Kode Aset**: Generate kode inventaris otomatis (contoh: `TKJ-RTR-102`).
-- **S3 Private Upload**: Foto perangkat disimpan di S3 private dan distreaming langsung lewat Boto3.
-- **Pencarian & Filter Real-Time**: Cari berdasarkan nama, kode aset, spesifikasi, lokasi rak, atau kondisi.
-- **Export CSV & Mode Cetak**: Unduh rekapan data ke CSV/Excel atau cetak laporan resmi langsung dari browser.
