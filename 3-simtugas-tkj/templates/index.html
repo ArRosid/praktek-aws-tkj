@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="{{ style }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMTUGAS TKJ - Portal Pengumpulan Tugas Siswa</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="theme-{{ style }}">
+
+    <!-- HEADER & AWS STATUS BAR -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand-group">
+                <div class="brand-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        <line x1="9" y1="7" x2="15" y2="7"></line>
+                        <line x1="9" y1="11" x2="15" y2="11"></line>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="brand-title">SIMTUGAS <span>TKJ</span></h1>
+                    <p class="brand-subtitle">Portal Pengumpulan Tugas Siswa • AWS EC2, DynamoDB & S3</p>
+                </div>
+            </div>
+
+            <div class="aws-status-badges">
+                <div class="badge-item theme-badge">
+                    <span class="dot"></span>
+                    <span>TEMA: <strong>{{ style_name }}</strong></span>
+                </div>
+                <div class="badge-item">
+                    <span class="badge-label">DynamoDB:</span>
+                    <span id="badge-dynamodb" class="badge-value">tkj_tugas</span>
+                </div>
+                <div class="badge-item">
+                    <span class="badge-label">S3 Private:</span>
+                    <span id="badge-s3" class="badge-value">tkj-tugas-siswa</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- NAVIGATION TABS -->
+    <nav class="tabs-nav">
+        <div class="tabs-container">
+            <button class="tab-btn active" data-tab="tab-kumpul">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <span>Kumpulkan Tugas (Siswa)</span>
+            </button>
+            <button class="tab-btn" data-tab="tab-rekap">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                <span>Rekap Tugas Masuk (Guru)</span>
+                <span id="counter-tugas" class="pill-counter">0</span>
+            </button>
+            <button class="tab-btn" data-tab="tab-kelola">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                <span>Kelola Kelas & Siswa (Guru)</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTAINER -->
+    <main class="main-content">
+
+        <!-- ================= TAB 1: KUMPULKAN TUGAS (SISWA) ================= -->
+        <section id="tab-kumpul" class="tab-panel active">
+            <div class="card form-card">
+                <div class="card-header">
+                    <div class="header-icon">📤</div>
+                    <div>
+                        <h2>Form Pengumpulan Tugas</h2>
+                        <p>Pilih kelas Anda, temukan nama Anda, dan lampirkan dokumen tugas dalam format PDF.</p>
+                    </div>
+                </div>
+
+                <form id="form-kumpul-tugas" class="form-body">
+                    <div class="form-row-2">
+                        <!-- Pilih Kelas -->
+                        <div class="form-group">
+                            <label for="select-kelas-siswa">1. Pilih Kelas <span class="req">*</span></label>
+                            <select id="select-kelas-siswa" name="kelas_id" required>
+                                <option value="">-- Memuat daftar kelas... --</option>
+                            </select>
+                            <span class="field-hint">Daftar kelas ditambahkan oleh guru</span>
+                        </div>
+
+                        <!-- Pilih Siswa (Populated otomatis) -->
+                        <div class="form-group">
+                            <label for="select-siswa">2. Pilih Nama Siswa <span class="req">*</span></label>
+                            <select id="select-siswa" name="siswa_id" required disabled>
+                                <option value="">-- Pilih kelas terlebih dahulu --</option>
+                            </select>
+                            <span class="field-hint">Nama Anda sesuai kelas yang dipilih</span>
+                        </div>
+                    </div>
+
+                    <!-- Judul Tugas -->
+                    <div class="form-group">
+                        <label for="input-judul-tugas">3. Judul / Topik Tugas <span class="req">*</span></label>
+                        <input type="text" id="input-judul-tugas" name="judul_tugas" placeholder="Contoh: Laporan Konfigurasi Routing Dinamik OSPF Lab 1" required>
+                    </div>
+
+                    <!-- Catatan Tambahan -->
+                    <div class="form-group">
+                        <label for="input-catatan">4. Catatan Siswa (Opsional)</label>
+                        <textarea id="input-catatan" name="catatan" rows="2" placeholder="Tuliskan catatan tambahan jika ada (misal: kendala konfigurasi, nomor absen, dll)"></textarea>
+                    </div>
+
+                    <!-- Upload File PDF -->
+                    <div class="form-group">
+                        <label>5. Upload Berkas Tugas (Format PDF Saja) <span class="req">*</span></label>
+                        <div class="upload-dropzone" id="dropzone">
+                            <input type="file" id="file-tugas" name="file_tugas" accept=".pdf,application/pdf" required class="file-input-hidden">
+                            <div class="dropzone-content">
+                                <div class="dropzone-icon">📄</div>
+                                <div class="dropzone-text">
+                                    <span class="primary-text">Klik untuk memilih file PDF</span> atau tarik file ke sini
+                                </div>
+                                <div class="dropzone-subtext">Hanya file berformat <strong>.PDF</strong> (Maks. 25MB)</div>
+                                <div id="selected-file-info" class="file-badge hidden">
+                                    <span class="file-name">filename.pdf</span>
+                                    <span class="file-size">(0 KB)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" id="btn-submit-tugas" class="btn btn-primary btn-lg">
+                            <span class="btn-text">Kumpulkan Tugas Sekarang 🚀</span>
+                            <span class="btn-loader hidden"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+
+        <!-- ================= TAB 2: REKAP TUGAS MASUK (GURU) ================= -->
+        <section id="tab-rekap" class="tab-panel">
+            <div class="card">
+                <div class="card-header rekap-header">
+                    <div>
+                        <h2>Daftar Pengumpulan Tugas</h2>
+                        <p>Daftar tugas yang telah diunggah oleh siswa ke AWS S3 Private & metadata DynamoDB.</p>
+                    </div>
+                    <div class="filter-group">
+                        <label for="filter-kelas-rekap">Filter Kelas:</label>
+                        <select id="filter-kelas-rekap">
+                            <option value="">Semua Kelas</option>
+                        </select>
+                        <button id="btn-refresh-rekap" class="btn btn-secondary btn-icon" title="Segarkan Data">
+                            🔄
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table" id="table-tugas">
+                        <thead>
+                            <tr>
+                                <th>Waktu Kumpul</th>
+                                <th>Kelas</th>
+                                <th>Nama Siswa</th>
+                                <th>Judul Tugas & Catatan</th>
+                                <th>File Berkas (S3)</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tugas-table-body">
+                            <tr>
+                                <td colspan="6" class="text-center loading-cell">Memuat data tugas...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================= TAB 3: KELOLA KELAS & SISWA (GURU) ================= -->
+        <section id="tab-kelola" class="tab-panel">
+            <div class="grid-2-col">
+
+                <!-- 1. KELOLA KELAS -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="header-icon">🏫</div>
+                        <div>
+                            <h3>1. Tambah Data Kelas</h3>
+                            <p>Buat rombongan belajar / kelas baru</p>
+                        </div>
+                    </div>
+
+                    <form id="form-tambah-kelas" class="form-body">
+                        <div class="form-group">
+                            <label for="nama-kelas">Nama Kelas <span class="req">*</span></label>
+                            <input type="text" id="nama-kelas" placeholder="Contoh: X TKJ 1, XI TKJ 2, XII TKJ 1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="jurusan-kelas">Konsentrasi Keahlian / Jurusan</label>
+                            <input type="text" id="jurusan-kelas" value="Teknik Komputer dan Jaringan">
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <span>Tambah Kelas</span>
+                        </button>
+                    </form>
+
+                    <hr class="divider">
+
+                    <h4>Daftar Kelas Tersedia</h4>
+                    <div id="list-kelas-container" class="item-list">
+                        <div class="empty-state">Memuat data kelas...</div>
+                    </div>
+                </div>
+
+                <!-- 2. KELOLA SISWA -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="header-icon">👨‍🎓</div>
+                        <div>
+                            <h3>2. Tambah Data Siswa</h3>
+                            <p>Masukkan siswa ke dalam kelas yang sudah ada</p>
+                        </div>
+                    </div>
+
+                    <form id="form-tambah-siswa" class="form-body">
+                        <div class="form-group">
+                            <label for="select-kelas-tambah-siswa">Pilih Kelas <span class="req">*</span></label>
+                            <select id="select-kelas-tambah-siswa" required>
+                                <option value="">-- Pilih Kelas --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="nama-siswa-input">Nama Lengkap Siswa <span class="req">*</span></label>
+                            <input type="text" id="nama-siswa-input" placeholder="Contoh: Ahmad Rizki, Siti Aminah" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="nis-siswa-input">NIS / No. Absen</label>
+                            <input type="text" id="nis-siswa-input" placeholder="Contoh: 10425 atau No. 05">
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <span>Tambah Siswa</span>
+                        </button>
+                    </form>
+
+                    <hr class="divider">
+
+                    <div class="siswa-list-header">
+                        <h4>Daftar Siswa</h4>
+                        <select id="filter-siswa-by-kelas">
+                            <option value="">Semua Kelas</option>
+                        </select>
+                    </div>
+                    <div id="list-siswa-container" class="item-list">
+                        <div class="empty-state">Memuat data siswa...</div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- FOOTER -->
+    <footer class="app-footer">
+        <p>Praktikum AWS Cloud SMK TKJ • EC2 Instance &bull; DynamoDB Table &bull; S3 Bucket (Private Access via Boto3 Stream)</p>
+    </footer>
+
+    <!-- App JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
