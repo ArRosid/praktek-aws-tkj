@@ -25,7 +25,7 @@ Dokumentasi ini disusun secara *step-by-step* untuk praktikum SMK Jurusan **Tekn
 ## 📁 Struktur Folder Project
 
 ```
-3-pengumpulan-tugas/
+3-simtugas-tkj/
 ├── app.py                  # Backend Flask + Boto3 (Membaca STYLE, PORT & .env)
 ├── sample.env              # Template konfigurasi environment (STYLE=BLUE / GREEN)
 ├── requirements.txt        # Library: flask, boto3, python-dotenv, gunicorn
@@ -160,24 +160,7 @@ Agar setiap EC2 yang dipasang di subnet ini otomatis mendapatkan Alamat IP Publi
 
 ---
 
-## 🔑 Langkah 8: Mengambil Kredensial AWS
-
-### Opsi A: Jika Menggunakan AWS Academy / Learner Lab
-1. Buka dashboard **AWS Academy Learner Lab**.
-2. Klik tombol **AWS Details** di sudut kanan atas.
-3. Klik link **Show** di bagian **AWS CLI credentials**.
-4. Salin ketiga nilai berikut:
-   - `aws_access_key_id`
-   - `aws_secret_access_key`
-   - `aws_session_token`
-
-### Opsi B: Jika Menggunakan IAM User Pribadi
-1. Salin `AWS_ACCESS_KEY_ID` dan `AWS_SECRET_ACCESS_KEY`.
-2. Kosongkan nilai `AWS_SESSION_TOKEN`.
-
----
-
-## 🖥️ Langkah 9: Membuat & Meluncurkan EC2 Instance
+## 🖥️ Langkah 8: Membuat & Meluncurkan EC2 Instance (IAM Role LabInstanceProfile)
 
 Setelah VPC, Security Group, DynamoDB, dan S3 siap, sekarang kita luncurkan EC2:
 
@@ -186,19 +169,22 @@ Setelah VPC, Security Group, DynamoDB, dan S3 siap, sekarang kita luncurkan EC2:
    - **Name**: `Server-SIMTUGAS-TKJ`
    - **Application and OS Images (AMI)**: **Ubuntu Server 22.04 LTS** atau **Ubuntu Server 24.04 LTS**.
    - **Instance type**: `t2.micro` atau `t3.micro` (Free tier eligible).
-   - **Key pair (login)**: Pilih key pair yang sudah Anda miliki (atau buat baru jika belum punya).
+   - **Key pair (login)**: Pilih key pair yang sudah Anda miliki (atau `vockey` di AWS Academy).
 3. **Network settings** (Klik tombol **Edit** di kanan):
    - **VPC**: Pilih `vpc-simtugas-tkj`
    - **Subnet**: Pilih `subnet-simtugas-public-1`
    - **Auto-assign public IP**: Pastikan statusnya **Enable**
    - **Firewall (security groups)**: Pilih **Select existing security group**
    - **Common security groups**: Centang **`simtugas-ec2-sg`** yang telah kita buat di Langkah 5.
-4. Klik **Launch instance**.
-5. Tunggu hingga status instance menjadi **Running**, lalu catat **Public IPv4 address**-nya.
+4. **Advanced details** (Gulir ke paling bawah dan klik untuk membuka):
+   - **IAM instance profile**: Pilih **`LabInstanceProfile`** (Role bawaan AWS Academy).
+   > **PENTING**: Dengan memilih `LabInstanceProfile`, instance EC2 akan otomatis memiliki izin penuh untuk mengakses DynamoDB dan S3 tanpa perlu memasukkan access key, secret key, atau session token di file konfigurasi `.env`!
+5. Klik **Launch instance**.
+6. Tunggu hingga status instance menjadi **Running**, lalu catat **Public IPv4 address**-nya.
 
 ---
 
-## 🚀 Langkah 10: Deploy & Menjalankan Aplikasi di EC2
+## 🚀 Langkah 9: Deploy & Menjalankan Aplikasi di EC2
 
 ### 1. Connect ke EC2 Instance
 Buka terminal lokal Anda atau gunakan tombol **Connect -> EC2 Instance Connect** dari AWS Console.
@@ -206,20 +192,19 @@ Buka terminal lokal Anda atau gunakan tombol **Connect -> EC2 Instance Connect**
 ### 2. Update Sistem & Install Paket Pendukung
 ```bash
 sudo apt update
-sudo apt install -y python3-pip python3-venv git
+sudo apt install -y python3-pip git
 ```
 
 ### 3. Clone Repository
 ```bash
 git clone https://github.com/ArRosid/praktek-aws-tkj.git
-cd praktek-aws-tkj/3-pengumpulan-tugas
+cd praktek-aws-tkj/3-simtugas-tkj
 ```
 
-### 4. Buat Virtual Environment & Install Library
+### 4. Install Library Python Secara Global
+Tidak perlu membuat virtual environment (`venv`). Install dependensi langsung ke sistem Python global dengan flag `--break-system-packages`:
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+pip3 install -r requirements.txt --break-system-packages
 ```
 
 ### 5. Konfigurasi File Environment (`.env`)
@@ -240,17 +225,14 @@ AWS_DEFAULT_REGION=us-east-1
 # Nama Tabel DynamoDB
 DYNAMODB_TABLE_NAME=tkj_tugas
 
-# Nama Bucket S3 Anda
+# Nama Bucket S3 Anda (sesuaikan dengan nama bucket yang dibuat di Langkah 7)
 S3_BUCKET_NAME=tkj-tugas-siswa-smk1
-
-# Kredensial AWS
-AWS_ACCESS_KEY_ID=ASIAXXXXXXXXXXXXXXX
-AWS_SECRET_ACCESS_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-AWS_SESSION_TOKEN=IQoJb3JpZ2luX2VjE... (kosongkan jika bukan AWS Academy)
 
 # Port Aplikasi
 PORT=5000
 ```
+> **Catatan Kredensial**: Kita **tidak perlu** mengisi `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, atau `AWS_SESSION_TOKEN`. Library Boto3 akan otomatis menggunakan kredensial dari `LabInstanceProfile` yang sudah terpasang pada EC2!
+>
 > **Tip Tema (STYLE)**: Ubah `STYLE=GREEN` jika ingin tampilan portal bernuansa hijau segar (emerald), atau `STYLE=BLUE` untuk tema biru teknologi. Simpan dengan `Ctrl + O`, `Enter`, lalu keluar dengan `Ctrl + X`.
 
 ### 6. Jalankan Server Aplikasi
@@ -265,7 +247,7 @@ nohup python3 app.py > app.log 2>&1 &
 
 ---
 
-## 🧪 Langkah 11: Pengujian Alur Aplikasi (Testing)
+## 🧪 Langkah 10: Pengujian Alur Aplikasi (Testing)
 
 Buka browser Anda dan akses alamat IP publik EC2:
 ```
