@@ -1,6 +1,7 @@
 # ⚖️ Panduan Setup Application Load Balancer (ALB) - SIMTUGAS TKJ
 
 Panduan ini menjelaskan cara mengonfigurasi **AWS Application Load Balancer (ALB)** di atas arsitektur yang sudah kita buat sebelumnya.
+<img width="1172" height="557" alt="image" src="https://github.com/user-attachments/assets/f24d89dd-31fc-4d7d-bc30-0a8ae44ef824" />
 
 ---
 
