@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ style }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMPRES TKJ - Online Student Attendance System (AWS Cloud)</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="theme-{{ style }}">
+
+    <!-- MISSING YOUR_NAME WARNING BANNER -->
+    {% if not has_your_name %}
+    <div id="missing-name-banner" class="alert-banner alert-danger">
+        <div class="banner-inner">
+            <span class="banner-icon">🚨</span>
+            <div class="banner-text">
+                <strong>EXAM REQUIREMENT WARNING:</strong> Environment variable <code>YOUR_NAME</code> is NOT set!
+                You must define <code>YOUR_NAME="Your Full Name"</code> in your <code>.env</code> file or server environment to properly identify your candidate submission.
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- TOP HEADER -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand-group">
+                <div class="brand-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="brand-title">SIMPRES <span>TKJ</span></h1>
+                    <p class="brand-subtitle">Online Student Attendance System • AWS EC2, DynamoDB & S3 Private</p>
+                </div>
+            </div>
+
+            <div class="aws-status-badges">
+                <!-- Candidate / Student Name Badge -->
+                <div class="badge-item {% if not has_your_name %}badge-danger-outline{% else %}badge-candidate{% endif %}">
+                    <span class="badge-label">Candidate:</span>
+                    <span id="badge-candidate-name" class="badge-value">
+                        {% if has_your_name %}
+                            {{ your_name }}
+                        {% else %}
+                            <span class="text-danger font-bold">NOT CONFIGURED</span>
+                        {% endif %}
+                    </span>
+                </div>
+
+                <div class="badge-item theme-badge">
+                    <span class="dot pulse"></span>
+                    <span>THEME: <strong>{{ style_name }}</strong></span>
+                </div>
+                <div class="badge-item">
+                    <span class="badge-label">DynamoDB:</span>
+                    <span id="badge-dynamodb" class="badge-value">tkj_presensi</span>
+                </div>
+                <div class="badge-item">
+                    <span class="badge-label">S3 Private:</span>
+                    <span id="badge-s3" class="badge-value">tkj-presensi-siswa</span>
+                </div>
+                <div class="badge-item auth-badge">
+                    <span class="badge-label">Auth:</span>
+                    <span id="badge-auth" class="badge-value">IAM Role</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- STATS COUNTER BAR -->
+    <section class="stats-bar-wrapper">
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-icon icon-students">👥</div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Registered Students</span>
+                    <strong id="stat-total-siswa" class="stat-number">0</strong>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-present">✨</div>
+                <div class="stat-info">
+                    <span class="stat-label">Present Today</span>
+                    <strong id="stat-hadir-today" class="stat-number">0</strong>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-permit">📝</div>
+                <div class="stat-info">
+                    <span class="stat-label">Excused Today</span>
+                    <strong id="stat-izin-today" class="stat-number">0</strong>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-sick">🩺</div>
+                <div class="stat-info">
+                    <span class="stat-label">Sick Today</span>
+                    <strong id="stat-sakit-today" class="stat-number">0</strong>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- NAVIGATION TABS -->
+    <nav class="tabs-nav">
+        <div class="tabs-container">
+            <button class="tab-btn active" data-tab="tab-presensi">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <span>Record Attendance (Student)</span>
+            </button>
+            <button class="tab-btn" data-tab="tab-rekap">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                <span>Attendance Logs & S3 Photos</span>
+                <span id="counter-presensi" class="pill-counter">0</span>
+            </button>
+            <button class="tab-btn" data-tab="tab-kelola">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                <span>Manage Classes & Students</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+        <!-- ================= TAB 1: ATTENDANCE SUBMISSION ================= -->
+        <section id="tab-presensi" class="tab-panel active">
+            <div class="card form-card">
+                <div class="card-header">
+                    <div class="header-icon">📸</div>
+                    <div>
+                        <h2>Submit Daily Attendance</h2>
+                        <p>Select your class and student name, choose your status, and capture a live selfie or attach documentation.</p>
+                    </div>
+                </div>
+
+                <form id="form-presensi" class="form-body">
+                    <!-- Class & Student Selector -->
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="presensi-kelas">Select Class <span class="required">*</span></label>
+                            <select id="presensi-kelas" name="kelas_id" class="form-input" required>
+                                <option value="">-- Choose Your Class --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="presensi-siswa">Student Name <span class="required">*</span></label>
+                            <select id="presensi-siswa" name="siswa_id" class="form-input" required disabled>
+                                <option value="">-- Choose Class First --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Attendance Status Selector -->
+                    <div class="form-group">
+                        <label class="block-label">Attendance Status <span class="required">*</span></label>
+                        <div class="status-selector">
+                            <label class="status-option">
+                                <input type="radio" name="status" value="Present" checked>
+                                <span class="status-chip chip-hadir">
+                                    <span class="icon">✨</span>
+                                    <span>Present</span>
+                                </span>
+                            </label>
+                            <label class="status-option">
+                                <input type="radio" name="status" value="Excused">
+                                <span class="status-chip chip-izin">
+                                    <span class="icon">📝</span>
+                                    <span>Excused</span>
+                                </span>
+                            </label>
+                            <label class="status-option">
+                                <input type="radio" name="status" value="Sick">
+                                <span class="status-chip chip-sakit">
+                                    <span class="icon">🩺</span>
+                                    <span>Sick</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Note / Remarks -->
+                    <div class="form-group">
+                        <label for="presensi-keterangan">Remarks / Location (Optional)</label>
+                        <input type="text" id="presensi-keterangan" name="keterangan" class="form-input" 
+                               placeholder="e.g., Present at TKJ Computer Lab 2 / Excused for competition">
+                    </div>
+
+                    <!-- Photo Media: Webcam Selfie vs File Upload -->
+                    <div class="form-group">
+                        <label class="block-label">
+                            <span id="foto-label-text">Attendance Selfie Photo / Document</span>
+                            <span class="required">*</span>
+                            <small class="label-hint">(Securely uploaded to AWS S3 Private Storage)</small>
+                        </label>
+
+                        <div class="photo-mode-tabs">
+                            <button type="button" id="btn-mode-camera" class="photo-mode-btn active">
+                                📷 Webcam / Camera Selfie
+                            </button>
+                            <button type="button" id="btn-mode-upload" class="photo-mode-btn">
+                                📁 Upload Photo File
+                            </button>
+                        </div>
+
+                        <!-- Camera Section -->
+                        <div id="camera-section" class="camera-box">
+                            <div class="video-container" id="video-wrapper">
+                                <video id="camera-stream" autoplay playsinline muted></video>
+                                <canvas id="camera-canvas" style="display: none;"></canvas>
+                                <div id="camera-placeholder" class="camera-placeholder">
+                                    <span class="camera-icon">📷</span>
+                                    <p>Camera is currently off. Click below to activate your camera.</p>
+                                </div>
+                            </div>
+
+                            <div class="camera-controls">
+                                <button type="button" id="btn-start-camera" class="btn btn-secondary">
+                                    <span>Turn On Camera</span>
+                                </button>
+                                <button type="button" id="btn-capture-camera" class="btn btn-primary" style="display: none;">
+                                    <span>📸 Capture Selfie</span>
+                                </button>
+                                <button type="button" id="btn-retake-camera" class="btn btn-ghost" style="display: none;">
+                                    <span>Retake Photo</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- File Upload Section -->
+                        <div id="upload-section" class="upload-box" style="display: none;">
+                            <div class="dropzone" id="foto-dropzone">
+                                <input type="file" id="foto-input" name="foto" accept="image/png, image/jpeg, image/jpg, image/webp" class="file-hidden">
+                                <div class="dropzone-content">
+                                    <div class="upload-icon">🖼️</div>
+                                    <p class="dropzone-title">Drag & drop photo here, or <span class="highlight">Browse File</span></p>
+                                    <p class="dropzone-hint">Accepted formats: JPG, PNG, WEBP (Max 15MB)</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Selected Photo Preview -->
+                        <div id="preview-container" class="preview-box" style="display: none;">
+                            <div class="preview-card">
+                                <img id="preview-image" src="" alt="Attendance Preview">
+                                <div class="preview-meta">
+                                    <span id="preview-filename" class="preview-name">selfie.jpg</span>
+                                    <span id="preview-size" class="preview-size">0 KB</span>
+                                    <button type="button" id="btn-cancel-preview" class="btn-text-danger" title="Remove this photo">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="form-actions">
+                        <button type="submit" id="btn-submit-presensi" class="btn btn-primary btn-large">
+                            <span class="btn-text">Submit Attendance</span>
+                            <span class="spinner" style="display: none;"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- ================= TAB 2: ATTENDANCE LOGS & PHOTOS ================= -->
+        <section id="tab-rekap" class="tab-panel">
+            <div class="card">
+                <div class="card-header flex-header">
+                    <div>
+                        <h2>Attendance Records & S3 Storage Gallery</h2>
+                        <p>View real-time records stored in DynamoDB with photos securely streamed via Boto3 from AWS S3.</p>
+                    </div>
+                    <button id="btn-refresh-rekap" class="btn btn-ghost" title="Refresh Data">
+                        🔄 Refresh
+                    </button>
+                </div>
+
+                <!-- Filters -->
+                <div class="filter-bar">
+                    <div class="filter-item">
+                        <label for="filter-kelas">Filter by Class:</label>
+                        <select id="filter-kelas" class="form-input">
+                            <option value="">All Classes</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="filter-tanggal">Filter by Date:</label>
+                        <input type="date" id="filter-tanggal" class="form-input">
+                    </div>
+                    <div class="filter-item">
+                        <label for="filter-status">Filter by Status:</label>
+                        <select id="filter-status" class="form-input">
+                            <option value="">All Statuses</option>
+                            <option value="Present">Present</option>
+                            <option value="Excused">Excused</option>
+                            <option value="Sick">Sick</option>
+                        </select>
+                    </div>
+                    <div class="filter-item btn-filter-reset">
+                        <button id="btn-reset-filter" class="btn btn-ghost">Reset Filters</button>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>S3 Photo</th>
+                                <th>Timestamp</th>
+                                <th>Student / ID</th>
+                                <th>Class</th>
+                                <th>Status</th>
+                                <th>Remarks</th>
+                                <th>File Size</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="presensi-table-body">
+                            <tr>
+                                <td colspan="8" class="text-center py-4">Loading attendance records...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 3: MANAGE CLASSES & STUDENTS ================= -->
+        <section id="tab-kelola" class="tab-panel">
+            <div class="manage-grid">
+                <!-- Add Class -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>🏫 Add Class</h3>
+                    </div>
+                    <form id="form-tambah-kelas" class="p-4">
+                        <div class="form-group">
+                            <label for="input-nama-kelas">Class Name <span class="required">*</span></label>
+                            <input type="text" id="input-nama-kelas" class="form-input" placeholder="e.g., 10 TKJ 1 / 11 TKJ 2" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-jurusan">Department / Major</label>
+                            <input type="text" id="input-jurusan" class="form-input" value="Computer Network Engineering" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full">Create New Class</button>
+                    </form>
+
+                    <div class="p-4 border-top">
+                        <h4>Available Classes</h4>
+                        <ul id="list-kelas-container" class="simple-item-list">
+                            <li class="empty-text">Loading classes...</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Add Student -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>👨‍🎓 Register Student</h3>
+                    </div>
+                    <form id="form-tambah-siswa" class="p-4">
+                        <div class="form-group">
+                            <label for="siswa-select-kelas">Select Class <span class="required">*</span></label>
+                            <select id="siswa-select-kelas" class="form-input" required>
+                                <option value="">-- Select Class --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-nis">Student ID (NIS)</label>
+                            <input type="text" id="input-nis" class="form-input" placeholder="e.g., 20261011">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-nama-siswa">Full Student Name <span class="required">*</span></label>
+                            <input type="text" id="input-nama-siswa" class="form-input" placeholder="e.g., Alex Johnson" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full">Register Student</button>
+                    </form>
+
+                    <div class="p-4 border-top">
+                        <div class="flex-between">
+                            <h4>Registered Students</h4>
+                            <select id="filter-manage-siswa-kelas" class="form-input sm">
+                                <option value="">All Classes</option>
+                            </select>
+                        </div>
+                        <ul id="list-siswa-container" class="simple-item-list mt-3">
+                            <li class="empty-text">Loading students...</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- PHOTO MODAL PREVIEW -->
+    <div id="photo-modal" class="modal-backdrop">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modal-photo-title">Attendance Photo Proof</h3>
+                <button type="button" id="btn-close-modal" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-image-wrapper">
+                    <img id="modal-photo-img" src="" alt="S3 Attendance Photo">
+                </div>
+                <div class="modal-details">
+                    <p id="modal-photo-desc"></p>
+                    <div class="modal-actions">
+                        <a id="btn-download-modal-photo" href="#" class="btn btn-secondary" target="_blank" download>
+                            ⬇️ Download Original
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATIONS -->
+    <div id="toast-container" class="toast-wrapper"></div>
+
+    <!-- FOOTER -->
+    <footer class="app-footer">
+        <p>AWS Cloud Computing Practical Exam • SIMPRES TKJ Integrated with Amazon DynamoDB & Amazon S3</p>
+    </footer>
+
+    <!-- Main JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
